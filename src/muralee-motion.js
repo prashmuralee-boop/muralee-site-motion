@@ -1,4 +1,4 @@
-/*! MURALEE site motion v0.1.0. Copyright 2026 MURALEE LIMITED. All rights reserved. Assumes window.gsap and ScrollTrigger (Webflow site settings, GSAP enabled)
+/*! MURALEE site motion v0.1.1. Copyright 2026 MURALEE LIMITED. All rights reserved. Assumes window.gsap and ScrollTrigger (Webflow site settings, GSAP enabled)
    and window.Lenis (loaded before this file). Honours prefers-reduced-motion; never hijacks touch.
    Hooks are data-m attributes so Webflow class renames do not break anything. */
 (function () {
@@ -181,49 +181,41 @@
     a.addEventListener('mouseleave', function () { lp.classList.remove('is-hover'); });
   });
 
-  /* ---------- Booking: steps, focus to heading, Calendly behind consent ---------- */
-  var bk = m1('booking');
-  if (bk) {
-    var form = m1('booking-form', bk), cont = m1('continue-2', bk), state = {};
-    var show = function (n, silent) {
-      $$('.start_step', bk).forEach(function (s) { s.hidden = s.getAttribute('data-step') !== String(n); });
-      $$('[data-step-nav]').forEach(function (t) { var on = t.getAttribute('data-step-nav') === String(n); t.classList.toggle('is-active', on); if (on) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current'); });
-      if (n > 1) { if (lenis) lenis.scrollTo(0, { immediate: true }); else W.scrollTo(0, 0); }
-      if (!silent && !FLAT) anim(bk, [{ transform: 'translateY(' + W.innerHeight + 'px) scale(' + (isMob() ? 1 : 1.03) + ')' }, { transform: 'none' }], { duration: isMob() ? 700 : 875, easing: EXPO });
-      var h = $('.start_step[data-step="' + n + '"] .start_title', bk); if (h && !silent) h.focus({ preventScroll: true });
-      var pl = m1('project-label', bk); if (pl) pl.textContent = 'Project: ' + (state.Project || 'not chosen');
-      if (hasG) ST.refresh();
+  /* ---------- Booking: one short form (Start page and Home), inline errors, Calendly secondary ---------- */
+  m('booking-form').forEach(function (form) {
+    form.setAttribute('novalidate', '');
+    var fields = $$('input, select, textarea', form).filter(function (f) { return f.type !== 'submit' && f.type !== 'hidden'; });
+    var errFor = function (f) { var id = (f.getAttribute('aria-describedby') || '').split(' ').filter(function (x) { return /-err$/.test(x); })[0]; return id ? d.getElementById(id) : null; };
+    var check = function (f) {
+      var ok = f.checkValidity(), er = errFor(f);
+      if (ok) f.removeAttribute('aria-invalid'); else f.setAttribute('aria-invalid', 'true');
+      if (er) er.hidden = ok;
+      return ok;
     };
-    bk.addEventListener('change', function (e) {
-      var i = e.target; if (!i || i.type !== 'radio') return;
-      state[i.name] = i.value;
-      if (i.name === 'Project') setTimeout(function () { show(2); }, FLAT ? 0 : 350);
-      if (cont) cont.disabled = !(state.Budget && state.Timing);
+    fields.forEach(function (f) {
+      f.addEventListener('blur', function () { if (f.hasAttribute('aria-invalid') || f.value) check(f); });
+      f.addEventListener('input', function () { if (f.hasAttribute('aria-invalid')) check(f); });
+      f.addEventListener('change', function () { if (f.hasAttribute('aria-invalid')) check(f); });
     });
-    $$('[data-go]', bk).forEach(function (b) { b.addEventListener('click', function () { show(+b.getAttribute('data-go')); }); });
-    var toCal = function () {
-      show(4);
-      var c = m1('calendly', bk); if (!c) return;
-      var q = 'hide_gdpr_banner=1&primary_color=302f2c&name=' + encodeURIComponent(form.Name.value) + '&email=' + encodeURIComponent(form.Email.value) + '&a1=' + encodeURIComponent([state.Project, state.Budget, state.Timing, form['Project line'].value].filter(Boolean).join(', '));
-      c.setAttribute('data-calendly-url', c.getAttribute('data-calendly-base') + '?' + q);
-    };
-    if (form) form.addEventListener('submit', function (e) {
-      if (!form.checkValidity()) { e.preventDefault(); form.reportValidity(); return; }
-      if (!W.Webflow) { e.preventDefault(); toCal(); return; }
-      /* Webflow handles the submission; move on when its success state appears */
+    /* capture phase so invalid submits never reach Webflow's handler */
+    form.addEventListener('submit', function (e) {
+      var bad = fields.filter(function (f) { return !check(f); });
+      if (bad.length) { e.preventDefault(); e.stopImmediatePropagation(); bad[0].focus(); return; }
       var wrap = form.closest('.w-form'), done = wrap && $('.w-form-done', wrap);
-      if (done) { var mo = new MutationObserver(function () { if (getComputedStyle(done).display !== 'none') { mo.disconnect(); toCal(); } }); mo.observe(done, { attributes: true, attributeFilter: ['style'] }); }
-      else setTimeout(toCal, 600);
-    });
-    var consent = m1('calendly-consent', bk);
-    if (consent) consent.addEventListener('click', function () {
-      var c = m1('calendly', bk), url = c.getAttribute('data-calendly-url') || c.getAttribute('data-calendly-base');
-      if (/LINK_TBC/.test(url)) { consent.textContent = 'Calendly link TBC'; return; }
+      if (done) { var mo = new MutationObserver(function () { if (getComputedStyle(done).display !== 'none') { mo.disconnect(); done.setAttribute('tabindex', '-1'); done.focus({ preventScroll: true }); } }); mo.observe(done, { attributes: true, attributeFilter: ['style'] }); }
+    }, true);
+  });
+  /* Calendly stays secondary: only loads after an explicit click */
+  m('calendly-consent').forEach(function (consent) {
+    consent.addEventListener('click', function (e) {
+      var c = m1('calendly'); if (!c) return;
+      var url = c.getAttribute('data-calendly-url') || c.getAttribute('data-calendly-base') || '';
+      e.preventDefault();
+      if (!url || /LINK_TBC/.test(url)) { consent.textContent = 'Calendly link coming soon'; return; }
       c.innerHTML = '<div class="calendly-inline-widget" data-url="' + url.replace(/"/g, '&quot;') + '" style="min-width:320px;height:660px;width:100%"></div>';
-      var s = d.createElement('script'); s.src = 'https://assets.calendly.com/assets/external/widget.js'; s.async = true; d.body.appendChild(s);
+      var sc = d.createElement('script'); sc.src = 'https://assets.calendly.com/assets/external/widget.js'; sc.async = true; d.body.appendChild(sc);
     });
-    show(1, true);
-  }
+  });
 
   /* ---------- Page wipe: exit on internal link click, enter on load ---------- */
   var pels = m('pel');
@@ -330,7 +322,9 @@
           .to($('.chapter_half.is-bottom', c), { yPercent: 51, ease: 'power2.inOut' }, 0)
           .fromTo($$('.chapter_word', c), { scale: 1 }, { scale: 1.08, ease: 'power1.in' }, 0)
           .fromTo($('.chapter_under-inner', c), { scale: 0.9, opacity: 0.25 }, { scale: 1, opacity: 1, ease: 'power2.out' }, 0.1);
-        zones.push([c0, c1]);
+        /* v0.1.1: the curtain before the booking slab (#book) snaps onto the booking form itself */
+        var nx = c.nextElementSibling, bk = (nx && nx.id === 'book') ? ($('[data-m~="booking-form"]', nx) || nx) : null;
+        zones.push([c0, c1, bk]);
       });
       deps.forEach(function (o) { var md = $('.tile_media', o.el); if (md) G.fromTo(md, { yPercent: -7 }, { yPercent: 7, ease: 'none', scrollTrigger: { start: o.top - vh, end: o.top + o.h, scrub: true } }); });
     }, stack);
@@ -348,7 +342,8 @@
         if (y > a + 2 && y < b - 2) {
           var p = (y - a) / (b - a), to = dir > 0 ? (p > 0.12 ? b : a) : (p < 0.88 ? a : b);
           snapping = true;
-          lenis.scrollTo(to, { duration: 1.1, easing: function (t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }, onComplete: function () { snapping = false; } });
+          var hd = $('[data-m="header"]'), tgt = (to === b && zones[i][2]) ? zones[i][2] : to;
+          lenis.scrollTo(tgt, { offset: tgt === to ? 0 : -((hd ? hd.offsetHeight : 0) + 24), duration: 1.1, easing: function (t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }, onComplete: function () { snapping = false; } });
           setTimeout(function () { snapping = false; }, 1400);
           break;
         }

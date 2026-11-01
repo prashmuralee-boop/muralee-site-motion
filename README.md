@@ -13,7 +13,7 @@ Pinned to a tag on jsDelivr, with Subresource Integrity:
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.4/dist/lenis.min.js" integrity="sha384-FKTX0CNJ8ngN1oGMBReVu7mvjTJyjFiD5etb1NKnYxc+8eFI2O0KWnksTN+oTFcu" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/gh/OWNER/muralee-site-motion@v0.1.0/dist/muralee-motion.min.js" integrity="SRI_HASH" crossorigin="anonymous" defer></script>
+<script src="https://cdn.jsdelivr.net/gh/OWNER/muralee-site-motion@v0.1.1/dist/muralee-motion.min.js" integrity="SRI_HASH" crossorigin="anonymous" defer></script>
 ```
 
 ## Dependencies (not in this repo)
