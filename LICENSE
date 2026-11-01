@@ -1,0 +1,8 @@
+Copyright (c) 2026 MURALEE LIMITED. All rights reserved.
+
+This code is published only so that muralee.co can load it from a public CDN.
+No licence is granted to copy, modify, distribute or use it for any other purpose
+without written permission from MURALEE LIMITED (info@muralee.co).
+
+Third party libraries used alongside this code (GSAP, Lenis) are not included
+in this repository and remain under their own licences.
